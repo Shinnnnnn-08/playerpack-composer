@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>3 Cards Fan — Transparent</title>
+<title>3 Cards – Upright (Transparent)</title>
 <style>
   :root{--bg:#0b0f14;--panel:#141a22;--muted:#5e6a79;--text:#e9eef5;--brand:#31c48d;--brand2:#38bdf8}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
@@ -22,7 +22,7 @@
   .btn.alt{background:var(--brand2);color:#06202a}
   .btn:disabled{opacity:.6;cursor:not-allowed}
   .hint{font-size:12px;color:var(--muted)}
-  /* checker chỉ để xem nền trong suốt, không xuất ra ảnh */
+  /* checker chỉ để xem nền trong suốt, KHÔNG xuất vào PNG */
   .checker{border-radius:16px; overflow:hidden; position:relative}
   .checker::before{
     content:""; display:block; width:100%; height:100%;
@@ -39,8 +39,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>3 Cards Fan (transparent)</h1>
-    <div class="hint">Chỉ ghép 3 hình chồng lên · PNG nền trong suốt</div>
+    <h1>3 Cards — đứng thẳng, nền trong suốt</h1>
+    <div class="hint">Chỉ ghép 3 hình chồng lên nhau</div>
   </header>
 
   <div class="grid layout">
@@ -63,7 +63,7 @@
 
       <div class="row">
         <strong>Ảnh 1 (trái)</strong>
-        <input id="url0" type="url" placeholder="Dán URL PNG/JPG (khuyến nghị dùng Choose File để tránh CORS)">
+        <input id="url0" type="url" placeholder="Dán URL PNG/JPG (khuyên dùng Choose File)">
         <input id="file0" type="file" accept="image/*" />
       </div>
       <div class="row">
@@ -77,7 +77,7 @@
         <input id="file2" type="file" accept="image/*" />
       </div>
 
-      <div class="hint">Tip: Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (không dính CORS).</div>
+      <div class="hint">Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (không dính CORS).</div>
 
       <div class="row" id="err" style="display:none"><div class="hint" style="color:#ff7b7b"></div></div>
 
@@ -98,6 +98,14 @@
   const fileEls=[$("file0"),$("file1"),$("file2")];
   const errWrap=$("err");
   let canDownload = true;
+
+  // --- cấu hình tỉ lệ như mẫu, KHÔNG NGHIÊNG ---
+  const CONFIG = {
+    centerH: 0.90,       // thẻ giữa cao 90% canvas
+    sideScale: 0.82,     // thẻ bên = 82% thẻ giữa
+    overlap: 0.36,       // chồng lên 36% bề ngang thẻ giữa
+    sideYOffset: 0.00    // thẻ bên hạ thấp (0 = cùng cao)
+  };
 
   function showErr(msg){ errWrap.style.display="block"; errWrap.firstElementChild.textContent=msg; }
   function clearErr(){ errWrap.style.display="none"; errWrap.firstElementChild.textContent=""; }
@@ -122,21 +130,13 @@
   }
 
   function sizeToHeight(img, h){ const r=h/img.height; return {w:Math.round(img.width*r), h:Math.round(h)}; }
-  function drawWithTilt(img,x,y,deg,w,h){
-    ctx.save();
-    ctx.translate(x+w/2,y+h/2);
-    ctx.rotate(deg*Math.PI/180);
-    ctx.translate(-w/2,-h/2);
-    ctx.drawImage(img,0,0,w,h);
-    ctx.restore();
-  }
 
   async function render(){
     clearErr(); canDownload = true;
     const [W,H]=setCanvasSize();
     ctx.clearRect(0,0,W,H); // nền trong suốt
 
-    // Lấy nguồn ảnh: ưu tiên file, sau đó URL
+    // nguồn ảnh: ưu tiên file
     const sources = await Promise.all([0,1,2].map(async i=>{
       const f = fileEls[i].files?.[0];
       if (f) return { type:"file", src: await readFileAsDataURL(f) };
@@ -155,26 +155,25 @@
 
       const L = loaded[0].img, C = loaded[1].img, R = loaded[2].img;
 
-      // --- TỈ LỆ & BỐ CỤC GIỐNG MẪU ---
-      const cardH_center = Math.floor(H * 0.90);         // thẻ giữa lớn ~90% chiều cao
-      const cardH_side   = Math.floor(cardH_center * 0.82); // thẻ bên nhỏ ~82% thẻ giữa
-      const degL = -22, degR = 22;                        // nghiêng mạnh
+      // Kích thước & bố cục đứng thẳng
+      const cardH_center = Math.floor(H * CONFIG.centerH);
+      const cardH_side   = Math.floor(cardH_center * CONFIG.sideScale);
       const Cs = sizeToHeight(C, cardH_center);
       const Ls = sizeToHeight(L, cardH_side);
       const Rs = sizeToHeight(R, cardH_side);
 
-      const overlap = Math.floor(Cs.w * 0.42);           // chồng lên ~42% bề ngang thẻ giữa
+      const overlap = Math.floor(Cs.w * CONFIG.overlap);
       const cx = Math.floor((W - Cs.w)/2);
       const cy = Math.floor((H - Cs.h)/2);
-      const sideYOffset = Math.floor(H * 0.02);          // thẻ bên hạ thấp chút
+      const sideYOffset = Math.floor(H * CONFIG.sideYOffset);
       const lx = cx - Ls.w + overlap;
       const ly = Math.floor((H - Ls.h)/2) + sideYOffset;
       const rx = cx + Cs.w - overlap;
       const ry = Math.floor((H - Rs.h)/2) + sideYOffset;
 
-      // Vẽ: trái → phải → giữa (để giữa nằm trên cùng)
-      drawWithTilt(L, lx, ly, degL, Ls.w, Ls.h);
-      drawWithTilt(R, rx, ry, degR, Rs.w, Rs.h);
+      // vẽ: trái → phải → giữa (để giữa ở trên cùng), KHÔNG tilt
+      ctx.drawImage(L, lx, ly, Ls.w, Ls.h);
+      ctx.drawImage(R, rx, ry, Rs.w, Rs.h);
       ctx.drawImage(C, cx, cy, Cs.w, Cs.h);
 
       if (!canDownload){
@@ -200,7 +199,6 @@
     a.click();
   });
 
-  // Render lần đầu (nếu đã có URL)
   render();
 })();
 </script>
