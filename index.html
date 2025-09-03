@@ -16,14 +16,25 @@
   .row{display:grid;gap:8px;margin-bottom:12px}
   label{font-size:12px;color:var(--muted)}
   input[type="text"],input[type="url"],select{background:#0f141b;border:1px solid #1c2532;color:var(--text);border-radius:10px;padding:10px;outline:none}
-  input[type="color"]{width:100%;height:38px;border-radius:10px;border:1px solid #1c2532;background:#0f141b}
   input[type="file"]{font-size:12px}
   .btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
   .btn.primary{background:var(--brand);color:#07240f}
   .btn.alt{background:var(--brand2);color:#06202a}
   .btn:disabled{opacity:.6;cursor:not-allowed}
   .hint{font-size:12px;color:var(--muted)}
-  canvas{width:100%;background:black;border-radius:16px;display:block}
+  /* Canvas trong suốt; hộp caro chỉ để preview transparency */
+  .checker{border-radius:16px; overflow:hidden}
+  .checker::before{
+    content:""; display:block; width:100%; height:100%;
+    background:
+      linear-gradient(45deg, #dde3ea 25%, transparent 25%) 0 0/20px 20px,
+      linear-gradient(45deg, transparent 75%, #dde3ea 75%) 0 0/20px 20px,
+      linear-gradient(45deg, #dde3ea 25%, transparent 25%) 10px 10px/20px 20px,
+      linear-gradient(45deg, transparent 75%, #dde3ea 75%) 10px 10px/20px 20px;
+    position:absolute; inset:0; z-index:0; opacity:.6;
+  }
+  .checker-wrap{position:relative}
+  canvas{position:relative; z-index:1; width:100%; background:transparent; display:block}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .imgbox{border:1px dashed #2a3545;border-radius:12px;padding:12px}
   .error{color:#ff7b7b;font-size:12px}
@@ -33,33 +44,29 @@
 <div class="wrap">
   <header>
     <h1>PlayerPack Composer</h1>
-    <div class="hint">Client-side · Share the link to your team</div>
+    <div class="hint">PNG nền trong suốt · Share link cho team</div>
   </header>
 
   <div class="grid layout">
     <section class="panel">
-      <canvas id="cv" width="1600" height="900"></canvas>
+      <div class="checker checker-wrap">
+        <canvas id="cv" width="1600" height="900"></canvas>
+      </div>
       <div class="hint" id="sizeHint" style="margin-top:6px">Canvas: 1600×900px</div>
     </section>
 
     <aside class="panel">
       <div class="row">
-        <label>Tên file (không vẽ lên ảnh)</label>
+        <label>Tên file tải xuống (không vẽ lên ảnh)</label>
         <input id="name" type="text" value="SUM125TOTS2" placeholder="SUM125TOTS2" />
       </div>
-      <div class="row two">
-        <div>
-          <label>Kích thước (WxH)</label>
-          <input id="size" type="text" value="1600x900" placeholder="1600x900" />
-        </div>
-        <div>
-          <label>Màu nền</label>
-          <input id="bg" type="color" value="#002c5c" />
-        </div>
+      <div class="row">
+        <label>Kích thước (WxH)</label>
+        <input id="size" type="text" value="1600x900" placeholder="1600x900" />
       </div>
       <div class="row two">
-        <label><input id="grad" type="checkbox" checked /> Gradient</label>
-        <label><input id="tilt" type="checkbox" checked /> Tilt</label>
+        <label><input id="tilt" type="checkbox" checked /> Tilt hai ảnh bên</label>
+        <label><input id="shadow" type="checkbox" checked /> Bóng đổ</label>
       </div>
       <div class="row">
         <label>Ảnh trung tâm</label>
@@ -72,21 +79,21 @@
 
       <div class="imgbox">
         <div class="row"><strong>Ảnh 1</strong>
-          <input id="url0" type="url" placeholder="Dán URL ảnh PNG…"
+          <input id="url0" type="url" placeholder="Dán URL PNG (nền trong suốt càng đẹp)"
             value="https://cdn.vn.garenanow.com//fo3vn/project/playerPack/500253240.png" />
           <input id="file0" type="file" accept="image/*" />
         </div>
         <div class="row"><strong>Ảnh 2</strong>
-          <input id="url1" type="url" placeholder="Dán URL ảnh PNG…"
+          <input id="url1" type="url" placeholder="Dán URL PNG (nền trong suốt càng đẹp)"
             value="https://cdn.vn.garenanow.com//fo3vn/project/playerPack/500229788.png" />
           <input id="file1" type="file" accept="image/*" />
         </div>
         <div class="row"><strong>Ảnh 3</strong>
-          <input id="url2" type="url" placeholder="Dán URL ảnh PNG…"
+          <input id="url2" type="url" placeholder="Dán URL PNG (nền trong suốt càng đẹp)"
             value="https://cdn.vn.garenanow.com//fo3vn/project/playerPack/500230971.png" />
           <input id="file2" type="file" accept="image/*" />
         </div>
-        <div class="hint">Tip: Nếu URL bị chặn CORS, hãy dùng nút chọn file.</div>
+        <div class="hint">Nếu URL bị chặn CORS, hãy dùng nút chọn file.</div>
       </div>
 
       <div class="row" id="err" style="display:none"><div class="error"></div></div>
@@ -103,7 +110,7 @@
 (function(){
   const $ = (id)=>document.getElementById(id);
   const cv = $("cv"), ctx = cv.getContext("2d");
-  const nameEl=$("name"), sizeEl=$("size"), bgEl=$("bg"), gradEl=$("grad"), tiltEl=$("tilt"), centerIdxEl=$("centerIdx");
+  const nameEl=$("name"), sizeEl=$("size"), tiltEl=$("tilt"), shadowEl=$("shadow"), centerIdxEl=$("centerIdx");
   const sizeHint=$("sizeHint"), errBox=$("err").firstElementChild;
   const urlEls=[$("url0"),$("url1"),$("url2")];
   const fileEls=[$("file0"),$("file1"),$("file2")];
@@ -116,20 +123,6 @@
     const [W,H]=parseSize(sizeEl.value||"1600x900");
     cv.width=W; cv.height=H; sizeHint.textContent=`Canvas: ${W}×${H}px`;
     return [W,H];
-  }
-
-  function gradientBackground(W,H,base){
-    ctx.fillStyle=base; ctx.fillRect(0,0,W,H);
-    if(!gradEl.checked) return;
-    const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.2,W/2,H/2,Math.max(W,H)*0.9);
-    g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.7)');
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  }
-  function drawGlowBars(W,H,margin){
-    const barH=Math.max(8,Math.floor(H/140));
-    ctx.save(); ctx.filter='blur(10px)';
-    for(let i=0;i<6;i++){const y=Math.floor(H*0.35+i*barH*2.6); const a=Math.max(0,140-i*18)/255; ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fillRect(margin,y,W-margin*2,barH);} 
-    ctx.restore();
   }
   function fitHeight(img,targetH){
     const ratio=targetH/img.height; const w=Math.max(1, Math.floor(img.width*ratio));
@@ -146,10 +139,10 @@
   async function render(){
     clearErr();
     const [W,H]=setCanvasSize();
-    gradientBackground(W,H,bgEl.value||'#002c5c');
+    // Xóa sạch để nền trong suốt
+    ctx.clearRect(0,0,W,H);
 
     const margin=Math.floor(Math.min(W,H)*0.06);
-    const titleArea=0; // không có tiêu đề trên ảnh
     const centerH=Math.floor(H*0.7);
     const playH=Math.min(centerH-margin, Math.floor(H*0.78));
 
@@ -168,14 +161,12 @@
       const mainH=Math.floor(playH*0.92), sideH=Math.floor(playH*0.82);
       const Lr=fitHeight(L,sideH), Cr=fitHeight(C,mainH), Rr=fitHeight(R,sideH);
 
-      const lt = (document.getElementById('tilt').checked? -7:0);
-      const rt = (document.getElementById('tilt').checked? 7:0);
+      const lt = (tiltEl.checked? -7:0);
+      const rt = (tiltEl.checked? 7:0);
       const spacing=Math.floor(W*0.02);
       const totalW=Lr.width+Cr.width+Rr.width+2*spacing;
       const startX=Math.floor((W-totalW)/2);
-      const yBase=Math.floor((H-titleArea-Math.max(Lr.height,Cr.height,Rr.height))/2);
-
-      drawGlowBars(W,H,margin);
+      const yBase=Math.floor((H-Math.max(Lr.height,Cr.height,Rr.height))/2);
 
       function drawWithTilt(img,x,y,deg){
         const rad=deg*Math.PI/180; ctx.save(); ctx.translate(x+img.width/2,y+img.height/2); ctx.rotate(rad); ctx.translate(-img.width/2,-img.height/2); ctx.drawImage(img,0,0); ctx.restore();
@@ -189,10 +180,14 @@
 
       const lx=startX, ly=yBase, cx=startX+Lr.width+spacing, cy=yBase-Math.floor(H*0.02), rx=cx+Cr.width+spacing, ry=yBase;
 
-      ctx.save(); ctx.translate(lx+Lr.width/2,ly+Lr.height/2); ctx.rotate(lt*Math.PI/180); ctx.translate(-Lr.width/2,-Lr.height/2); drawShadow(Lr,0,0,{blur:35,offsetY:25,scale:1.05,opacity:.75}); ctx.restore();
-      drawShadow(Cr,cx,cy,{blur:40,offsetY:28,scale:1.06,opacity:.78});
-      ctx.save(); ctx.translate(rx+Rr.width/2,ry+Rr.height/2); ctx.rotate(rt*Math.PI/180); ctx.translate(-Rr.width/2,-Rr.height/2); drawShadow(Rr,0,0,{blur:35,offsetY:25,scale:1.05,opacity:.75}); ctx.restore();
+      // Bóng đổ tùy chọn
+      if (shadowEl.checked){
+        ctx.save(); ctx.translate(lx+Lr.width/2,ly+Lr.height/2); ctx.rotate(lt*Math.PI/180); ctx.translate(-Lr.width/2,-Lr.height/2); drawShadow(Lr,0,0,{blur:35,offsetY:25,scale:1.05,opacity:.75}); ctx.restore();
+        drawShadow(Cr,cx,cy,{blur:40,offsetY:28,scale:1.06,opacity:.78});
+        ctx.save(); ctx.translate(rx+Rr.width/2,ry+Rr.height/2); ctx.rotate(rt*Math.PI/180); ctx.translate(-Rr.width/2,-Rr.height/2); drawShadow(Rr,0,0,{blur:35,offsetY:25,scale:1.05,opacity:.75}); ctx.restore();
+      }
 
+      // Vẽ 3 ảnh (nền trong suốt)
       drawWithTilt(Lr,lx,ly,lt);
       ctx.drawImage(Cr,cx,cy);
       drawWithTilt(Rr,rx,ry,rt);
