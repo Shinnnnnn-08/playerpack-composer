@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>3 Cards – Upright (Transparent)</title>
+<title>3 Cards – Same Size (Transparent)</title>
 <style>
   :root{--bg:#0b0f14;--panel:#141a22;--muted:#5e6a79;--text:#e9eef5;--brand:#31c48d;--brand2:#38bdf8}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
@@ -22,8 +22,7 @@
   .btn.alt{background:var(--brand2);color:#06202a}
   .btn:disabled{opacity:.6;cursor:not-allowed}
   .hint{font-size:12px;color:var(--muted)}
-
-  /* Checkerboard chỉ để xem nền trong suốt (không xuất vào PNG) */
+  /* checker chỉ để xem nền trong suốt (không xuất ra PNG) */
   .checker{border-radius:16px; overflow:hidden; position:relative}
   .checker::before{
     content:""; display:block; width:100%; height:100%;
@@ -40,8 +39,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>3 Cards — đứng thẳng, nền trong suốt</h1>
-    <div class="hint">Chỉ ghép 3 hình chồng lên nhau (1 trên 2, 2 trên 3)</div>
+    <h1>3 Cards — bằng nhau, nền trong suốt</h1>
+    <div class="hint">Chồng lớp: 3 dưới → 2 giữa → 1 trên</div>
   </header>
 
   <div class="grid layout">
@@ -63,7 +62,7 @@
       </div>
 
       <div class="row">
-        <strong>Ảnh 1 (trái) — sẽ nằm TRÊN CÙNG</strong>
+        <strong>Ảnh 1 (trái) — TRÊN CÙNG</strong>
         <input id="url0" type="url" placeholder="Dán URL PNG/JPG (khuyên dùng Choose File)">
         <input id="file0" type="file" accept="image/*" />
       </div>
@@ -73,12 +72,12 @@
         <input id="file1" type="file" accept="image/*" />
       </div>
       <div class="row">
-        <strong>Ảnh 3 (phải) — nằm DƯỚI CÙNG</strong>
+        <strong>Ảnh 3 (phải) — DƯỚI CÙNG</strong>
         <input id="url2" type="url" placeholder="URL PNG/JPG">
         <input id="file2" type="file" accept="image/*" />
       </div>
 
-      <div class="hint">Tip: Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (không dính CORS).</div>
+      <div class="hint">Tip: Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (tránh CORS).</div>
 
       <div class="row" id="err" style="display:none"><div class="hint" style="color:#ff7b7b"></div></div>
 
@@ -100,12 +99,11 @@
   const errWrap=$("err");
   let canDownload = true;
 
-  // --- Cấu hình tỉ lệ giống mẫu, KHÔNG NGHIÊNG ---
+  // --- Cấu hình: cả 3 ảnh cùng chiều cao ---
   const CONFIG = {
-    centerH: 0.90,       // thẻ giữa cao 90% canvas
-    sideScale: 0.82,     // thẻ bên = 82% thẻ giữa
-    overlap: 0.36,       // chồng lên 36% bề ngang thẻ giữa
-    sideYOffset: 0.00    // thẻ bên hạ thấp (0 = cùng cao)
+    cardH: 0.90,     // chiều cao mỗi ảnh so với canvas (90%)
+    overlap: 0.36,   // chồng lên theo % bề ngang ảnh giữa
+    yOffset: 0.00    // dịch dọc (0 = cùng cao)
   };
 
   function showErr(msg){ errWrap.style.display="block"; errWrap.firstElementChild.textContent=msg; }
@@ -143,7 +141,7 @@
     const [W,H]=setCanvasSize();
     ctx.clearRect(0,0,W,H); // nền trong suốt
 
-    // nguồn ảnh: ưu tiên file
+    // Nguồn ảnh: ưu tiên file
     const sources = await Promise.all([0,1,2].map(async i=>{
       const f = fileEls[i].files?.[0];
       if (f) return { type:"file", src: await readFileAsDataURL(f) };
@@ -160,28 +158,30 @@
         return r;
       }));
 
-      // Ảnh 1 (trái, trên cùng) – Ảnh 2 (giữa) – Ảnh 3 (phải, dưới cùng)
+      // L = Ảnh 1 (trên cùng), C = Ảnh 2 (giữa), R = Ảnh 3 (dưới cùng)
       const L = loaded[0].img, C = loaded[1].img, R = loaded[2].img;
 
-      const cardH_center = Math.floor(H * CONFIG.centerH);
-      const cardH_side   = Math.floor(cardH_center * CONFIG.sideScale);
-      const Cs = sizeToHeight(C, cardH_center);
-      const Ls = sizeToHeight(L, cardH_side);
-      const Rs = sizeToHeight(R, cardH_side);
+      // Cùng chiều cao cho cả 3 ảnh
+      const hAll = Math.floor(H * CONFIG.cardH);
+      const S1 = sizeToHeight(L, hAll);
+      const S2 = sizeToHeight(C, hAll);
+      const S3 = sizeToHeight(R, hAll);
 
-      const overlap = Math.floor(Cs.w * CONFIG.overlap);
-      const cx = Math.floor((W - Cs.w)/2);
-      const cy = Math.floor((H - Cs.h)/2);
-      const sideYOffset = Math.floor(H * CONFIG.sideYOffset);
-      const lx = cx - Ls.w + overlap;
-      const ly = Math.floor((H - Ls.h)/2) + sideYOffset;
-      const rx = cx + Cs.w - overlap;
-      const ry = Math.floor((H - Rs.h)/2) + sideYOffset;
+      // Tính vị trí & overlap theo bề rộng ảnh giữa
+      const overlap = Math.floor(S2.w * CONFIG.overlap);
+      const cx = Math.floor((W - S2.w)/2);
+      const cy = Math.floor((H - S2.h)/2);
+      const yOff = Math.floor(H * CONFIG.yOffset);
 
-      // VẼ THEO LỚP: 3 (dưới) → 2 (giữa) → 1 (trên)
-      ctx.drawImage(R, rx, ry, Rs.w, Rs.h); // Ảnh 3 – dưới cùng
-      ctx.drawImage(C, cx, cy, Cs.w, Cs.h); // Ảnh 2 – giữa
-      ctx.drawImage(L, lx, ly, Ls.w, Ls.h); // Ảnh 1 – trên cùng
+      const lx = cx - S1.w + overlap;
+      const ly = cy + yOff;
+      const rx = cx + S2.w - overlap;
+      const ry = cy + yOff;
+
+      // Vẽ theo lớp: 3 (dưới) → 2 (giữa) → 1 (trên)
+      ctx.drawImage(R, rx, ry, S3.w, S3.h);
+      ctx.drawImage(C, cx, cy, S2.w, S2.h);
+      ctx.drawImage(L, lx, ly, S1.w, S1.h);
 
       if (!canDownload){
         showErr("Dùng URL chặn CORS: vẫn preview được nhưng không thể 'Tải PNG'. Hãy dùng 'Choose File' hoặc host ảnh cùng domain.");
