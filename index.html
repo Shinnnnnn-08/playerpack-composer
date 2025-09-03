@@ -33,7 +33,7 @@
 <div class="wrap">
   <header>
     <h1>PlayerPack Composer</h1>
-    <div class="hint">Client‑side · Share the link to your team</div>
+    <div class="hint">Client-side · Share the link to your team</div>
   </header>
 
   <div class="grid layout">
@@ -44,7 +44,7 @@
 
     <aside class="panel">
       <div class="row">
-        <label>Tên gói (name)</label>
+        <label>Tên file (không vẽ lên ảnh)</label>
         <input id="name" type="text" value="SUM125TOTS2" placeholder="SUM125TOTS2" />
       </div>
       <div class="row two">
@@ -60,14 +60,6 @@
       <div class="row two">
         <label><input id="grad" type="checkbox" checked /> Gradient</label>
         <label><input id="tilt" type="checkbox" checked /> Tilt</label>
-      </div>
-      <div class="row">
-        <label>Vị trí tiêu đề</label>
-        <select id="titlePos">
-          <option value="top">Top</option>
-          <option value="bottom" selected>Bottom</option>
-          <option value="off">Off</option>
-        </select>
       </div>
       <div class="row">
         <label>Ảnh trung tâm</label>
@@ -111,7 +103,7 @@
 (function(){
   const $ = (id)=>document.getElementById(id);
   const cv = $("cv"), ctx = cv.getContext("2d");
-  const nameEl=$("name"), sizeEl=$("size"), bgEl=$("bg"), gradEl=$("grad"), tiltEl=$("tilt"), titlePosEl=$("titlePos"), centerIdxEl=$("centerIdx");
+  const nameEl=$("name"), sizeEl=$("size"), bgEl=$("bg"), gradEl=$("grad"), tiltEl=$("tilt"), centerIdxEl=$("centerIdx");
   const sizeHint=$("sizeHint"), errBox=$("err").firstElementChild;
   const urlEls=[$("url0"),$("url1"),$("url2")];
   const fileEls=[$("file0"),$("file1"),$("file2")];
@@ -126,12 +118,6 @@
     return [W,H];
   }
 
-  function drawTextWithStroke(text,x,y,fs){
-    ctx.save();
-    ctx.font=`bold ${fs}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`;
-    ctx.lineJoin="round"; ctx.miterLimit=2; ctx.strokeStyle="rgba(0,0,0,0.8)"; ctx.lineWidth=Math.max(2,Math.round(fs*0.07)); ctx.fillStyle="#fff";
-    ctx.strokeText(text,x,y); ctx.fillText(text,x,y); ctx.restore();
-  }
   function gradientBackground(W,H,base){
     ctx.fillStyle=base; ctx.fillRect(0,0,W,H);
     if(!gradEl.checked) return;
@@ -163,11 +149,10 @@
     gradientBackground(W,H,bgEl.value||'#002c5c');
 
     const margin=Math.floor(Math.min(W,H)*0.06);
-    const titleArea=(titlePosEl.value==='off')?0:Math.floor(H*0.18);
+    const titleArea=0; // không có tiêu đề trên ảnh
     const centerH=Math.floor(H*0.7);
     const playH=Math.min(centerH-margin, Math.floor(H*0.78));
 
-    // resolve sources (file preferred)
     const srcs = await Promise.all([0,1,2].map(async i=>{
       const f=fileEls[i].files && fileEls[i].files[0];
       if(f) return fileToURL(f);
@@ -212,20 +197,15 @@
       ctx.drawImage(Cr,cx,cy);
       drawWithTilt(Rr,rx,ry,rt);
 
-      const title = (nameEl.value||"").trim();
-      if(title && titlePosEl.value!=='off'){
-        const maxW=W-margin*2; let fs=120; ctx.save();
-        while(fs>24){ ctx.font=`bold ${fs}px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial`; if(ctx.measureText(title).width<=maxW) break; fs-=2; }
-        ctx.restore(); const textY = (titlePosEl.value==='top') ? (margin+fs) : (H - margin);
-        drawTextWithStroke(title, margin, textY, fs);
-      }
-
     }catch(e){ document.getElementById('err').style.display='block'; errBox.textContent=e.message||String(e); throw e; }
   }
 
   document.getElementById("render").addEventListener('click', render);
   document.getElementById("download").addEventListener('click', ()=>{
-    const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download=(nameEl.value||'playerpack')+'.png'; a.click();
+    const a=document.createElement('a'); a.href=cv.toDataURL('image/png');
+    let fn = (nameEl.value||'playerpack').trim() || 'playerpack';
+    fn = fn.replace(/[/\\?%*:|"<>]+/g,'-'); // sanitize tên file
+    a.download = fn + '.png'; a.click();
   });
 
   render();
