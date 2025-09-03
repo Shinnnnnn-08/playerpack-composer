@@ -22,7 +22,8 @@
   .btn.alt{background:var(--brand2);color:#06202a}
   .btn:disabled{opacity:.6;cursor:not-allowed}
   .hint{font-size:12px;color:var(--muted)}
-  /* checker chỉ để xem nền trong suốt, KHÔNG xuất vào PNG */
+
+  /* Checkerboard chỉ để xem nền trong suốt (không xuất vào PNG) */
   .checker{border-radius:16px; overflow:hidden; position:relative}
   .checker::before{
     content:""; display:block; width:100%; height:100%;
@@ -40,7 +41,7 @@
 <div class="wrap">
   <header>
     <h1>3 Cards — đứng thẳng, nền trong suốt</h1>
-    <div class="hint">Chỉ ghép 3 hình chồng lên nhau</div>
+    <div class="hint">Chỉ ghép 3 hình chồng lên nhau (1 trên 2, 2 trên 3)</div>
   </header>
 
   <div class="grid layout">
@@ -62,7 +63,7 @@
       </div>
 
       <div class="row">
-        <strong>Ảnh 1 (trái)</strong>
+        <strong>Ảnh 1 (trái) — sẽ nằm TRÊN CÙNG</strong>
         <input id="url0" type="url" placeholder="Dán URL PNG/JPG (khuyên dùng Choose File)">
         <input id="file0" type="file" accept="image/*" />
       </div>
@@ -72,12 +73,12 @@
         <input id="file1" type="file" accept="image/*" />
       </div>
       <div class="row">
-        <strong>Ảnh 3 (phải)</strong>
+        <strong>Ảnh 3 (phải) — nằm DƯỚI CÙNG</strong>
         <input id="url2" type="url" placeholder="URL PNG/JPG">
         <input id="file2" type="file" accept="image/*" />
       </div>
 
-      <div class="hint">Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (không dính CORS).</div>
+      <div class="hint">Tip: Dùng **Choose File** cho cả 3 ảnh để render & tải PNG chắc chắn (không dính CORS).</div>
 
       <div class="row" id="err" style="display:none"><div class="hint" style="color:#ff7b7b"></div></div>
 
@@ -99,7 +100,7 @@
   const errWrap=$("err");
   let canDownload = true;
 
-  // --- cấu hình tỉ lệ như mẫu, KHÔNG NGHIÊNG ---
+  // --- Cấu hình tỉ lệ giống mẫu, KHÔNG NGHIÊNG ---
   const CONFIG = {
     centerH: 0.90,       // thẻ giữa cao 90% canvas
     sideScale: 0.82,     // thẻ bên = 82% thẻ giữa
@@ -117,8 +118,14 @@
     return [W,H];
   }
 
-  function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error("Không đọc được file: "+(file?.name||""))); fr.readAsDataURL(file); }); }
-  function loadImage(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("Không tải được ảnh")); im.src=src; }); }
+  // FileReader → dataURL (tránh CORS)
+  function readFileAsDataURL(file){
+    return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error("Không đọc được file: "+(file?.name||""))); fr.readAsDataURL(file); });
+  }
+  function loadImage(src){
+    return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("Không tải được ảnh")); im.src=src; });
+  }
+  // URL với fallback: nếu CORS fail, vẫn preview (không cho download)
   function loadURLWithCorsFallback(src){
     return new Promise((resolve,reject)=>{
       const ok=(img,corsOK)=>resolve({img,corsOK});
@@ -153,9 +160,9 @@
         return r;
       }));
 
+      // Ảnh 1 (trái, trên cùng) – Ảnh 2 (giữa) – Ảnh 3 (phải, dưới cùng)
       const L = loaded[0].img, C = loaded[1].img, R = loaded[2].img;
 
-      // Kích thước & bố cục đứng thẳng
       const cardH_center = Math.floor(H * CONFIG.centerH);
       const cardH_side   = Math.floor(cardH_center * CONFIG.sideScale);
       const Cs = sizeToHeight(C, cardH_center);
@@ -171,10 +178,10 @@
       const rx = cx + Cs.w - overlap;
       const ry = Math.floor((H - Rs.h)/2) + sideYOffset;
 
-      // vẽ: trái → phải → giữa (để giữa ở trên cùng), KHÔNG tilt
-      ctx.drawImage(L, lx, ly, Ls.w, Ls.h);
-      ctx.drawImage(R, rx, ry, Rs.w, Rs.h);
-      ctx.drawImage(C, cx, cy, Cs.w, Cs.h);
+      // VẼ THEO LỚP: 3 (dưới) → 2 (giữa) → 1 (trên)
+      ctx.drawImage(R, rx, ry, Rs.w, Rs.h); // Ảnh 3 – dưới cùng
+      ctx.drawImage(C, cx, cy, Cs.w, Cs.h); // Ảnh 2 – giữa
+      ctx.drawImage(L, lx, ly, Ls.w, Ls.h); // Ảnh 1 – trên cùng
 
       if (!canDownload){
         showErr("Dùng URL chặn CORS: vẫn preview được nhưng không thể 'Tải PNG'. Hãy dùng 'Choose File' hoặc host ảnh cùng domain.");
